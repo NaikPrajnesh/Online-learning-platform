@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel – EduLearn</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/index.html" class="logo">EduLearn Admin</a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="/index.html">Site</a></li>
+        <li><a href="/admin.html">Admin</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="btn btn-icon btn-ghost" id="theme-toggle" aria-label="Toggle theme">🌙</button>
+        <span id="nav-user"></span>
+        <span id="nav-auth"></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container section">
+    <div id="admin-denied" class="empty-state" style="display:none">
+      <h3>Admin access required</h3>
+      <p>Log in with admin@elearn.com / admin123</p>
+      <a href="/login.html" class="btn btn-primary" style="margin-top:1rem">Login</a>
+    </div>
+
+    <div id="admin-panel" style="display:none">
+      <div class="section-header">
+        <h1>Course management</h1>
+      </div>
+      <div class="admin-grid">
+        <div class="auth-card">
+          <h2 id="form-title">Add course</h2>
+          <form id="course-form">
+            <input type="hidden" id="course-id">
+            <div class="form-group"><label>Title</label><input id="title" required></div>
+            <div class="form-group"><label>Short description</label><input id="shortDescription" required></div>
+            <div class="form-group"><label>Full description</label><textarea id="fullDescription" required></textarea></div>
+            <div class="form-group"><label>Duration</label><input id="duration" placeholder="10 hours" required></div>
+            <div class="form-group"><label>Image URL</label><input id="imageUrl" required></div>
+            <div class="form-group"><label>Instructor</label><input id="instructor" required></div>
+            <div class="form-group"><label>Category</label>
+              <select id="category" required>
+                <option>Programming</option>
+                <option>Design</option>
+                <option>Computer Science</option>
+                <option>Database</option>
+              </select>
+            </div>
+            <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+              <input type="checkbox" id="featured"> Featured course
+            </label>
+            <button type="submit" class="btn btn-primary">Save course</button>
+            <button type="button" class="btn btn-ghost" id="reset-form" style="margin-left:0.5rem">Reset</button>
+          </form>
+        </div>
+        <div class="admin-table-wrap">
+          <table>
+            <thead><tr><th>Title</th><th>Category</th><th>Actions</th></tr></thead>
+            <tbody id="admin-courses"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/storage.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script>
+    function checkAdmin() {
+      const user = Storage.getUser();
+      if (!user || user.role !== 'ADMIN') {
+        document.getElementById('admin-denied').style.display = 'block';
+        return false;
+      }
+      document.getElementById('admin-panel').style.display = 'block';
+      return true;
+    }
+
+    async function loadAdminCourses() {
+      const tbody = document.getElementById('admin-courses');
+      const courses = await Api.getCourses();
+      tbody.innerHTML = courses.map(c => `
+        <tr>
+          <td>${escapeHtml(c.title)}</td>
+          <td>${escapeHtml(c.category)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm edit-btn" data-id="${c.id}">Edit</button>
+            <button class="btn btn-ghost btn-sm delete-btn" data-id="${c.id}">Delete</button>
+          </td>
+        </tr>`).join('');
+
+      tbody.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const course = await Api.getCourse(btn.dataset.id);
+          document.getElementById('form-title').textContent = 'Edit course';
+          document.getElementById('course-id').value = course.id;
+          document.getElementById('title').value = course.title;
+          document.getElementById('shortDescription').value = course.shortDescription;
+          document.getElementById('fullDescription').value = course.fullDescription;
+          document.getElementById('duration').value = course.duration;
+          document.getElementById('imageUrl').value = course.imageUrl;
+          document.getElementById('instructor').value = course.instructor;
+          document.getElementById('category').value = course.category;
+          document.getElementById('featured').checked = course.featured;
+        });
+      });
+
+      tbody.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Delete this course?')) return;
+          await Api.deleteCourse(btn.dataset.id);
+          loadAdminCourses();
+        });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!checkAdmin()) return;
+      loadAdminCourses();
+
+      document.getElementById('reset-form').addEventListener('click', () => {
+        document.getElementById('course-form').reset();
+        document.getElementById('course-id').value = '';
+        document.getElementById('form-title').textContent = 'Add course';
+      });
+
+      document.getElementById('course-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+          title: document.getElementById('title').value,
+          shortDescription: document.getElementById('shortDescription').value,
+          fullDescription: document.getElementById('fullDescription').value,
+          duration: document.getElementById('duration').value,
+          imageUrl: document.getElementById('imageUrl').value,
+          instructor: document.getElementById('instructor').value,
+          category: document.getElementById('category').value,
+          featured: document.getElementById('featured').checked
+        };
+        const id = document.getElementById('course-id').value;
+        if (id) await Api.updateCourse(id, payload);
+        else await Api.createCourse(payload);
+        document.getElementById('reset-form').click();
+        loadAdminCourses();
+      });
+    });
+  </script>
+</body>
+</html>

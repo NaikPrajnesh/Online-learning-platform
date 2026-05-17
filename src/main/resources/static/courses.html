@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Courses – EduLearn</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/index.html" class="logo">EduLearn</a>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Menu">☰</button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/courses.html">Courses</a></li>
+        <li><a href="/my-courses.html">My Courses</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="btn btn-icon btn-ghost" id="theme-toggle" aria-label="Toggle theme">🌙</button>
+        <span id="nav-user"></span>
+        <span id="nav-auth"></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container section">
+    <div class="section-header">
+      <div>
+        <h1>Explore Courses</h1>
+        <p>Find your next skill with search and filters</p>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <input type="search" id="search-input" placeholder="Search courses…" aria-label="Search">
+      <select id="category-filter" aria-label="Category">
+        <option value="all">All categories</option>
+        <option value="Programming">Programming</option>
+        <option value="Design">Design</option>
+        <option value="Computer Science">Computer Science</option>
+        <option value="Database">Database</option>
+      </select>
+      <button class="btn btn-primary" id="filter-btn">Apply</button>
+    </div>
+
+    <div class="course-grid" id="course-list">
+      <p class="empty-state">Loading…</p>
+    </div>
+  </main>
+
+  <footer class="footer container"><p>© 2026 EduLearn Platform</p></footer>
+
+  <script src="/js/storage.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script>
+    async function loadCourses() {
+      const search = document.getElementById('search-input').value.trim();
+      const category = document.getElementById('category-filter').value;
+      const grid = document.getElementById('course-list');
+      try {
+        const courses = await Api.getCourses(search, category);
+        if (!courses.length) {
+          grid.innerHTML = '<div class="empty-state"><h3>No courses found</h3><p>Try a different search or category.</p></div>';
+          return;
+        }
+        grid.innerHTML = courses.map(c => renderCourseCard(c)).join('');
+        bindEnrollButtons(grid);
+      } catch (e) {
+        grid.innerHTML = '<p class="empty-state">Start the server to load courses from the API.</p>';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCourses();
+      document.getElementById('filter-btn').addEventListener('click', loadCourses);
+      document.getElementById('search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') loadCourses();
+      });
+    });
+  </script>
+</body>
+</html>
